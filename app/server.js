@@ -54,6 +54,11 @@ app.delete("/produits/:id", async (req, res) => {
   res.json({ status: "deleted" });
 });
 
+// GET /health — vérifie que l'API est vivante (sans toucher à la base)
+app.get("/health", (req, res) => {
+  res.json({ status: "ok" });
+});
+
 // Gestionnaire d'erreurs global (Express 5 y envoie les erreurs des handlers async)
 app.use((err, req, res, next) => {
   console.error(err);
