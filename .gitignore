@@ -1,0 +1,18 @@
+# Dépendances — jamais commitées, réinstallables via package-lock.json
+node_modules/
+
+# Logs
+npm-debug.log*
+*.log
+
+# Fichiers d'environnement — contiennent souvent des secrets
+.env
+.env.*
+
+# OS
+Thumbs.db
+.DS_Store
+
+# IDE
+.vscode/
+.idea/

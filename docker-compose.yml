@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: tpuser
+      POSTGRES_PASSWORD: tppassword
+      POSTGRES_DB: tpdb
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - tp_network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    networks:
+      - tp_network
+    depends_on:
+      - db
+
+  web:
+    build: ./app
+    environment:
+      DB_HOST: db
+      DB_NAME: tpdb
+      DB_USER: tpuser
+      DB_PASSWORD: tppassword
+    ports:
+      - "5000:5000"
+    networks:
+      - tp_network
+    depends_on:
+      - db
+
+volumes:
+  db_data:
+
+networks:
+  tp_network:
