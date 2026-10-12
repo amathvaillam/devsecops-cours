@@ -26,12 +26,21 @@ npm install
 npm start
 ```
 
+## Tests
+
+```powershell
+# nécessite un PostgreSQL accessible (variables DB_HOST, DB_PORT, ...)
+cd app
+npm test
+```
+
 ## Endpoints
 
 - `GET /produits` : liste tous les produits
 - `POST /produits` : crée un produit `{nom, prix, quantite}`
 - `PUT /produits/:id` : modifie un produit
 - `DELETE /produits/:id` : supprime un produit
+- `GET /health` : vérifie que l'API est vivante
 
 Exemple :
 
@@ -46,23 +55,26 @@ curl -X POST http://localhost:5000/produits `
 Chaque étape = un concept + un changement concret dans ce dépôt.
 L'objectif final : un pipeline complet, reproductible et transférable.
 
+📚 **Le détail de chaque étape est documenté dans [`docs/`](docs/) — un fichier
+par chapitre, avec les concepts, les commandes et la partie réutilisable.**
+
 ### Étape 0 — Fondations (fait)
 - [x] Application Node.js + PostgreSQL
 - [x] Conteneurisation (Dockerfile + docker-compose)
 - Concepts : images, conteneurs, volumes, réseaux, services
 
-### Étape 1 — Git & GitHub
-- [ ] `git init`, `.gitignore`, README
-- [ ] Conventional commits, branches, pull requests
+### Étape 1 — Git & GitHub (fait)
+- [x] `git init`, `.gitignore`, README
+- [x] Conventional commits, branches, pull requests
 - Concepts : versionnement, collaboration, revue de code
 
-### Étape 2 — Tests (avant d'automatiser !)
-- [ ] Tests unitaires (`node:test` + supertest)
-- [ ] Test d'intégration avec vraie base
+### Étape 2 — Tests (fait)
+- [x] Tests unitaires (`node:test` + supertest)
+- [x] Test d'intégration avec vraie base
 - Concepts : pourquoi un pipeline sans tests ne sert à rien
 
-### Étape 3 — CI avec GitHub Actions
-- [ ] Workflow : lint → tests → build image à chaque push/PR
+### Étape 3 — CI avec GitHub Actions (en cours)
+- [x] Workflow : tests + build image à chaque push/PR
 - Concepts : intégration continue, boucle de feedback rapide, badge
 
 ### Étape 4 — Jenkins & DockerHub
@@ -94,6 +106,7 @@ Kubernetes · Terraform (IaC) · observabilité (Prometheus/Grafana) · GitOps (
 .
 ├── app/
 │   ├── server.js          # application Express
+│   ├── test/api.test.js   # tests (node:test + supertest)
 │   ├── package.json       # dépendances + scripts
 │   ├── Dockerfile         # image de l'API
 │   └── .dockerignore

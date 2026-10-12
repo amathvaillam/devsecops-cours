@@ -6,6 +6,7 @@ app.use(express.json());
 
 const pool = new Pool({
   host: process.env.DB_HOST,
+  port: Number(process.env.DB_PORT) || 5432,
   database: process.env.DB_NAME,
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
@@ -65,7 +66,13 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: "internal server error" });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`API produits démarrée sur le port ${PORT}`);
-});
+// L'app n'écoute que lorsqu'elle est lancée directement (node server.js),
+// pas lorsqu'elle est importée par les tests (require("../server")).
+if (require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`API produits démarrée sur le port ${PORT}`);
+  });
+}
+
+module.exports = app;
