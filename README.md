@@ -70,8 +70,8 @@ L'objectif final : un pipeline complet, reproductible et transférable.
 - [x] Test d'intégration avec vraie base
 - Concepts : pourquoi un pipeline sans tests ne sert à rien
 
-### Étape 3 — CI avec GitHub Actions
-- [ ] Workflow : lint → tests → build image à chaque push/PR
+### Étape 3 — CI avec GitHub Actions (en cours)
+- [x] Workflow : tests + build image à chaque push/PR
 - Concepts : intégration continue, boucle de feedback rapide, badge
 
 ### Étape 4 — Jenkins & DockerHub
