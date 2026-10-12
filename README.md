@@ -73,7 +73,7 @@ par chapitre, avec les concepts, les commandes et la partie réutilisable.**
 - [x] Test d'intégration avec vraie base
 - Concepts : pourquoi un pipeline sans tests ne sert à rien
 
-### Étape 3 — CI avec GitHub Actions (en cours)
+### Étape 3 — CI avec GitHub Actions (fait)
 - [x] Workflow : tests + build image à chaque push/PR
 - Concepts : intégration continue, boucle de feedback rapide, badge
 
