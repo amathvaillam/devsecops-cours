@@ -55,6 +55,9 @@ curl -X POST http://localhost:5000/produits `
 Chaque étape = un concept + un changement concret dans ce dépôt.
 L'objectif final : un pipeline complet, reproductible et transférable.
 
+📚 **Le détail de chaque étape est documenté dans [`docs/`](docs/) — un fichier
+par chapitre, avec les concepts, les commandes et la partie réutilisable.**
+
 ### Étape 0 — Fondations (fait)
 - [x] Application Node.js + PostgreSQL
 - [x] Conteneurisation (Dockerfile + docker-compose)
