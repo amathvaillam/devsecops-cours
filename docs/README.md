@@ -14,7 +14,7 @@ terminé que lorsque la vérification est passée.
 - [x] [02 — Git & GitHub](02-git-github.md) — commits conventionnels, branches, pull requests
 - [x] [03 — Les tests](03-tests.md) — node:test, supertest, unitaire vs intégration
 - [x] [04 — CI avec GitHub Actions](04-ci.md) — workflow, services, boucle de feedback
-- [ ] [05 — Jenkins & DockerHub](05-jenkins-dockerhub.md) — pipeline CD, credentials, tags d'image
+- [x] [05 — Jenkins & DockerHub](05-jenkins-dockerhub.md) — pipeline CD, credentials, tags d'image
 - [ ] [06 — DevSecOps](06-devsecops.md) — secrets, SAST, CVE, scan d'image
 - [ ] [07 — Déploiement réel](07-deploiement.md) — healthcheck, environnements, rollback
 - [ ] [08 — Multirepo](08-multirepo.md) — séparer app / infra / CI

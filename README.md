@@ -77,9 +77,9 @@ par chapitre, avec les concepts, les commandes et la partie réutilisable.**
 - [x] Workflow : tests + build image à chaque push/PR
 - Concepts : intégration continue, boucle de feedback rapide, badge
 
-### Étape 4 — Jenkins & DockerHub
-- [ ] Pipeline Jenkins : Build → Test → Push
-- [ ] Tags d'image versionnés, credentials
+### Étape 4 — Jenkins & DockerHub (fait)
+- [x] Pipeline Jenkins : Build → Test → Push
+- [x] Tags d'image versionnés, credentials
 - Concepts : CD, registre d'images, immutabilité des artefacts
 
 ### Étape 5 — DevSecOps (brique par brique)
@@ -114,6 +114,3 @@ Kubernetes · Terraform (IaC) · observabilité (Prometheus/Grafana) · GitOps (
 ├── docker-compose.yml     # orchestration locale
 └── Jenkinsfile            # pipeline Jenkins (étape 4)
 ```
-
- (test) ligne ecrite depuis GitHub, sans passer par ma machine
-
