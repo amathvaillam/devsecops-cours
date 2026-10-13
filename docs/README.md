@@ -24,3 +24,8 @@ terminé que lorsque la vérification est passée.
 1. Un chapitre = un concept + un changement concret dans ce projet
 2. On exécute, on **vérifie**, et seulement ensuite on coche
 3. Chaque chapitre se termine par « Réutilisable » : le template transférable
+
+## Travaux pratiques
+
+- [TP 01 — Les remotes de A à Z (avec livraison finale)](tp-01-remotes.md) —
+  fetch/pull, tracking, prune, rouge→vert, puis livraison d'un endpoint complet
