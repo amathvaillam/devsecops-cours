@@ -66,3 +66,19 @@ test("DELETE /produits/:id inconnu répond 404", async () => {
   const res = await request(app).delete("/produits/999999");
   assert.equal(res.status, 404);
 });
+
+test("GET /produits/:id renvoie le produit existant", async () => {
+  const created = await request(app)
+    .post("/produits")
+    .send({ nom: "Produit test GET", prix: 12.5, quantite: 2 });
+  const res = await request(app).get(`/produits/${created.body.id}`);
+  assert.equal(res.status, 200);
+  assert.equal(res.body.nom, "Produit test GET");
+  assert.equal(res.body.prix, 12.5);
+  await request(app).delete(`/produits/${created.body.id}`);
+});
+
+test("GET /produits/:id inconnu renvoie 404", async () => {
+  const res = await request(app).get("/produits/999999");
+  assert.equal(res.status, 404);
+});

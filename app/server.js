@@ -75,4 +75,16 @@ if (require.main === module) {
   });
 }
 
+// GET /produits/:id — récupère un produit précis
+app.get("/produits/:id", async (req, res) => {
+  const { rows } = await pool.query(
+    "SELECT id, nom, prix, quantite FROM produits WHERE id = $1;",
+    [req.params.id]
+  );
+  if (rows.length === 0) {
+    return res.status(404).json({ error: "not found" });
+  }
+  const p = rows[0];
+  res.json({ ...p, prix: Number(p.prix) });
+});
 module.exports = app;
