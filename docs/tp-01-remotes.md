@@ -163,15 +163,15 @@ git branch -vv                      # main [origin/main], rien d'autre
 
 ---
 
-## Checklist finale
+## Checklist finale — ✅ TP terminé le 13/10
 
-- [ ] La photo a menti (Acte 1) puis s'est mise à jour (fetch → behind → pull)
-- [ ] CI rouge vue (Acte 2) puis verte (Acte 3)
-- [ ] `push` nu a marché (lien `-u`), l'erreur « no upstream » vue (Acte 3)
-- [ ] `-d` a averti, `--prune` a nettoyé (Acte 4)
-- [ ] PR `feat/produit-par-id` mergée, CI verte, 9/9 tests (Acte 5)
-- [ ] `-d` silencieux après merge (Acte 5) — le contraste avec l'Acte 4
-- [ ] `git branch -vv` final : `main [origin/main]`, rien d'autre
+- [x] La photo a menti (Acte 1) puis s'est mise à jour (fetch → behind → pull)
+- [x] CI rouge vue (Acte 2) puis verte (Acte 3)
+- [x] `push` nu a marché (lien `-u`), l'erreur « no upstream » vue (Acte 3)
+- [x] `-d` a averti, `--prune` a nettoyé (Acte 4)
+- [x] PR `feat/produit-par-id` mergée, CI verte, 9/9 tests (Acte 5)
+- [x] `-d` silencieux après merge (Acte 5) — le contraste avec l'Acte 4
+- [x] `git branch -vv` final : `main [origin/main]`, rien d'autre
 
 ## À mémoriser
 
