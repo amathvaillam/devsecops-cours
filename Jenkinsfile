@@ -2,8 +2,8 @@ pipeline {
     agent any
 
     environment {
-        // Remplacez par votre identifiant DockerHub (ex: monuser/tp-crud)
-        DOCKER_IMAGE = 'DOCKERHUB_USERNAME/tp-crud'
+        // L'image publiée sur DockerHub : pseudo DockerHub / nom du projet
+        DOCKER_IMAGE = 'availlam/tp-crud'
     }
 
     stages {
@@ -15,8 +15,25 @@ pipeline {
 
         stage('Test') {
             steps {
-                // Vérifie la syntaxe du code et le démarrage de l'API
-                sh 'docker run --rm -e DB_HOST=unused -e DB_NAME=unused -e DB_USER=unused -e DB_PASSWORD=unused ${DOCKER_IMAGE}:${BUILD_NUMBER} node --check server.js'
+                // 1. Une base PostgreSQL jetable, sur un réseau dédié
+                sh 'docker rm -f tp-test-db || true'
+                sh 'docker network create tp-ci-net || true'
+                sh 'docker run -d --name tp-test-db --network tp-ci-net -e POSTGRES_USER=tpuser -e POSTGRES_PASSWORD=tppassword -e POSTGRES_DB=tpdb postgres:16-alpine'
+
+                // 2. Attendre que la base soit prête (max 30 s)
+                sh '''
+                    for i in $(seq 1 30); do
+                        docker exec tp-test-db pg_isready -U tpuser -d tpdb && break
+                        sleep 1
+                    done
+                '''
+
+                // 3. Créer la table via init.sql (copié dans le conteneur)
+                sh 'docker cp db/init.sql tp-test-db:/tmp/init.sql'
+                sh 'docker exec tp-test-db psql -U tpuser -d tpdb -f /tmp/init.sql'
+
+                // 4. La vraie suite de tests, contre cette base
+                sh 'docker run --rm --network tp-ci-net -e DB_HOST=tp-test-db -e DB_PORT=5432 -e DB_NAME=tpdb -e DB_USER=tpuser -e DB_PASSWORD=tppassword ${DOCKER_IMAGE}:${BUILD_NUMBER} sh -c "npm ci && npm test"'
             }
         }
 
@@ -33,6 +50,14 @@ pipeline {
                     sh 'docker push ${DOCKER_IMAGE}:latest'
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            // Nettoyage, que le pipeline ait réussi ou échoué
+            sh 'docker rm -f tp-test-db || true'
+            sh 'docker network rm tp-ci-net || true'
         }
     }
 }
