@@ -17,7 +17,7 @@ let createdId;
 // --- Test unitaire pur : ne touche pas à la base ---
 test("GET /health répond 200 avec status ok", async () => {
   const res = await request(app).get("/health");
-  assert.equal(res.status, 200);
+  assert.equal(res.status, 999);
   assert.deepEqual(res.body, { status: "ok" });
 });
 
