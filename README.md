@@ -114,3 +114,6 @@ Kubernetes · Terraform (IaC) · observabilité (Prometheus/Grafana) · GitOps (
 ├── docker-compose.yml     # orchestration locale
 └── Jenkinsfile            # pipeline Jenkins (étape 4)
 ```
+
+ (test) ligne ecrite depuis GitHub, sans passer par ma machine
+
