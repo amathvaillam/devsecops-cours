@@ -25,6 +25,11 @@ terminé que lorsque la vérification est passée.
 2. On exécute, on **vérifie**, et seulement ensuite on coche
 3. Chaque chapitre se termine par « Réutilisable » : le template transférable
 
+## Décisions d'architecture
+
+- [Rôles des pipelines — GitHub Actions (CI) & Jenkins (CD)](pipeline-roles.md)
+  — boussole des chapitres 06+ : quoi confier à qui, et pourquoi
+
 ## Travaux pratiques
 
 - [TP 01 — Les remotes de A à Z (avec livraison finale)](tp-01-remotes.md) —
