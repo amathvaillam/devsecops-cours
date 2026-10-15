@@ -33,9 +33,14 @@ Build → Test → Push, déclenchée **automatiquement** par chaque push GitHub
   base jetable (réseau dédié + `postgres:16-alpine`), boucle
   `pg_isready` (max 30 s), `docker cp` de `init.sql`, puis la vraie suite
   `npm ci && npm test` **dans l'image construite**.
-  - ⚠️ Pièges vécus : `docker cp` obligatoire au lieu de `-v` (le daemon voit
-    le disque de la machine, **pas** celui du conteneur Jenkins) ; `npm ci`
-    indispensable car l'image de prod est construite `--omit=dev`.
+  - ⚠️ Pièges vécus (3 !) : `docker cp` obligatoire au lieu de `-v` (le daemon
+    voit le disque de la machine, **pas** celui du conteneur Jenkins) ; `npm ci`
+    indispensable car l'image de prod est construite `--omit=dev` ; et la
+    **course du serveur temporaire** : au premier démarrage, l'entrypoint
+    Postgres lance un serveur TEMPORAIRE (socket seul), le coupe, puis démarre
+    le vrai — un `pg_isready` sur le socket peut croire le temporaire prêt
+    (échec intermittent du build #7). La vérification en **TCP** (`-h 127.0.0.1`)
+    n'accepte que le vrai serveur. « Des fois ça marche » = race condition.
 - **Push DockerHub** : `withCredentials` → `docker login --password-stdin`,
   tag `${BUILD_NUMBER}` **et** `latest`, deux pushs.
 - **post { always }** : nettoyage des conteneurs/réseau de test, succès ou
@@ -51,24 +56,40 @@ Build → Test → Push, déclenchée **automatiquement** par chaque push GitHub
   `DOCKER_PASS` au moment du run. Chacun configure ses valeurs sous le même
   ID → le pipeline reste générique et le dépôt public reste vierge de secrets.
 
-## 5. Le déclenchement automatique (webhook + tunnel)
+## 5. Le déclenchement automatique (webhook + ngrok, domaine statique)
 
 Problème : Jenkins vit sur `localhost` — GitHub ne peut pas l'atteindre.
 
-- **Tunnel** : `docker run -d --name cloudflared cloudflare/cloudflared tunnel --url http://host.docker.internal:8090`
-  → URL publique éphémère (`https://…trycloudflare.com`, via l'API GitHub :
-  hook créé le 13/10 à 22:55 UTC).
-- **Webhook GitHub** : Settings → Webhooks → URL `…/github-webhook/`,
-  événement `push`.
-- **Case dans le job Jenkins** : « GitHub hook trigger for GITScm polling »
-  (sans elle, le job n'écoute pas — vérifié : `<triggers/>` vide).
-- **Résultat vérifié** : un push → build **#5** lancé tout seul
-  (cause `GitHubPushCause`) → image `:5` sur DockerHub. Chaîne complète :
-  `push → GitHub → webhook → tunnel → Jenkins → Build → Test → Push`.
+**Solution retenue : ngrok avec domaine statique gratuit — l'URL ne change JAMAIS.**
 
-> ⚠️ Limitation connue : l'URL `trycloudflare` est **éphémère** (elle meurt au
-> redémarrage de cloudflared). Il faut alors recréer tunnel + webhook. La vraie
-> solution (domaine stable) viendra avec le chapitre 07 — déploiement.
+- Authtoken rangé dans `C:\Users\availlam\ngrok\ngrok.env` (hors dépôt, hors
+  ligne de commande) → passé au conteneur via `--env-file`
+- ngrok **en Docker** : le binaire Windows est mis en quarantaine par l'EDR de
+  la machine (vécu — voir incidents) ; dans la VM Linux de Docker il vit
+  tranquille, et c'est cohérent avec le reste de la stack
+- Lancement :
+  `docker run -d --name ngrok -p 4040:4040 --env-file "C:\Users\availlam\ngrok\ngrok.env" ngrok/ngrok:latest http host.docker.internal:8090 --url=steadfast-fifth-causing.ngrok-free.dev`
+- Webhook GitHub : `https://steadfast-fifth-causing.ngrok-free.dev/github-webhook/`
+  (événement `push`)
+- Case dans le job Jenkins : « GitHub hook trigger for GITScm polling »
+  (sans elle, le job n'écoute pas — vérifié : `<triggers/>` vide)
+- Résultat vérifié : push → build automatique (`GitHubPushCause`) → DockerHub.
+
+### Les incidents vécus (et les réflexes appris)
+
+1. **Le tunnel éphémère** : premier essai avec le quick tunnel cloudflared
+   (`trycloudflare.com`) — mort après ~17 h puis ~30 h → livraisons webhook en
+   **502**. Diagnostic : page du webhook → *Recent Deliveries* → statut HTTP.
+   Leçon : une chaîne casse à son maillon le plus faible ; on inspecte chaque
+   maillon (delivery → tunnel → Jenkins).
+2. **L'EDR corporate** : `ngrok.exe` supprimé silencieusement du disque
+   (quarantaine — Defender désactivé, donc agent tiers). Leçon : en
+   environnement géré, certains binaires ne passent pas ; Docker est un
+   contournement propre et reproductible.
+3. **La redelivery** : GitHub conserve chaque livraison et permet de **rejouer**
+   un événement raté (Recent Deliveries → Redeliver, ou API
+   `POST /hooks/{id}/deliveries/{id}/attempts`). C'est ainsi que le build #7
+   (perdu dans le 502) a été ressuscité. Vérifié : livraison rejouée → 200.
 
 ## Vérification
 
@@ -76,9 +97,11 @@ Problème : Jenkins vit sur `localhost` — GitHub ne peut pas l'atteindre.
 - [x] Credential `dockerhub-credentials` créé (token, pas mot de passe)
 - [x] Pipeline configurée en « Pipeline script from SCM » sur le dépôt
 - [x] Stage Test = vraie suite de tests avec base jetable
-- [x] Build #4 SUCCESS sur main ; builds 1-5 dans l'historique
-- [x] Images sur DockerHub : tags `3`, `4`, `5` + `latest`
-- [x] Push déclenché automatiquement → build #5 (`GitHubPushCause`)
+- [x] Builds 1 à 8 : le #7 (rouge) = course du serveur temporaire Postgres,
+  corrigée par le readiness TCP — validée par le build #8 vert
+- [x] Images sur DockerHub : tags `3` à `8` + `latest`
+- [x] Déclenchement automatique par webhook (build #5) ; build #7 ressuscité
+  par **redelivery** ; URL stable **ngrok** (domaine statique)
 
 ## Réutilisable : quoi copier, quoi changer
 
