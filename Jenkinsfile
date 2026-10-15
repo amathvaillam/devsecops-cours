@@ -21,9 +21,13 @@ pipeline {
                 sh 'docker run -d --name tp-test-db --network tp-ci-net -e POSTGRES_USER=tpuser -e POSTGRES_PASSWORD=tppassword -e POSTGRES_DB=tpdb postgres:16-alpine'
 
                 // 2. Attendre que la base soit prête (max 30 s)
+                //    ⚠️ piège vécu : au premier démarrage, l'entrypoint Postgres lance un
+                //    serveur TEMPORAIRE (socket seul) pour l'init, puis l'arrête et démarre
+                //    le vrai. Un check sur le socket peut répondre "accepting" puis
+                //    disparaître. En TCP (-h 127.0.0.1), seul le VRAI serveur répond.
                 sh '''
                     for i in $(seq 1 30); do
-                        docker exec tp-test-db pg_isready -U tpuser -d tpdb && break
+                        docker exec tp-test-db pg_isready -h 127.0.0.1 -U tpuser -d tpdb && break
                         sleep 1
                     done
                 '''
