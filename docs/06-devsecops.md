@@ -1,7 +1,7 @@
 # Chapitre 06 — DevSecOps
 
-> 🔄 En cours — briques **5a (gitleaks)** et **5b (semgrep)** terminées.
-> Bricks 5c-5d à venir.
+> 🔄 En cours — briques **5a (gitleaks)**, **5b (semgrep)** et **5c (npm
+> audit)** terminées. Brique 5d à venir.
 
 Objectif : ajouter la sécurité au pipeline existant, en la déplaçant **le plus
 tôt possible** dans la chaîne — c'est le « shift-left ». Placement de chaque
@@ -102,10 +102,39 @@ fix est prescrit par la règle elle-même.
 
 ---
 
-## 5c. Dépendances — npm audit + trivy (à venir)
+## 5c. Les CVE des dépendances — npm audit ✅
 
-Objectif : détecter les CVE connues dans les librairies embarquées (SCA =
-Software Composition Analysis). Placement : GH Actions, sur PR.
+**Ce qui a été construit** : job `audit` dans `.github/workflows/ci.yml`
+(GH Actions, sur PR) : `npm audit --audit-level=high` (lit le lockfile).
+Politique : le job échoue sur les CVE **high/critical** — les moderate
+s'affichent sans bloquer.
+
+**L'exercice de la dépendance vérolée (vécu)** :
+
+1. `npm install lodash@4.17.15` — une des libs les plus populaires du monde,
+   en version un peu ancienne → **3 vulnérabilités** visibles dès le local
+   (prototype pollution, injection de commande, ReDoS). npm audit documente
+   chaque CVE : identifiant, sévérité, chemin.
+2. Commit + PR → audit **✗ rouge** — et les 4 autres jobs verts : le *code*
+   va bien, c'est la *lib* qui est malade (encore un angle différent !).
+3. **Le fix par upgrade** : lodash mis à jour vers la version patchée
+   (`^4.18.1`, la dernière) → `found 0 vulnerabilities` → audit **✓ vert**.
+
+**Le menu de remédiation (à retenir)** :
+
+- **Upgrader** (le fix standard, presque toujours gagnant)
+- Remplacer la lib par une alternative
+- Retirer (si inutilisée)
+- Ou **accepter en connaissance de cause** — avec une évaluation du risque
+  documentée (parfois une CVE n'est pas exploitable dans ton contexte)
+
+**La leçon** : la popularité ne protège pas — **la fraîcheur des versions,
+si**. On met à jour régulièrement, même « quand tout marche ».
+
+**Incident vécu** : panne DNS transitoire (`Could not resolve host:
+github.com`) pendant un push → simple retry après retour du réseau. Le
+réflexe d'ops : **identifier la couche qui casse** (réseau ? DNS ? auth ?
+proxy ?) avant de suspecter git.
 
 ## 5d. Image — trivy + durcissement (à venir)
 
@@ -127,12 +156,13 @@ différent du pipeline.
 - [x] Réécriture maîtrisée : `reset --hard` + `push --force-with-lease`
 - [x] Un code vulnérable factice est détecté par semgrep (2 findings bloquants)
 - [x] Run rouge chirurgical (seul semgrep échoue) puis vert après fix par commit
-- [ ] Une dépendance vulnérable factice est détectée par l'audit (5c)
+- [x] Une dépendance vulnérable factice est détectée par l'audit (lodash 4.17.15 → 3 CVE)
+- [x] Le fix par upgrade suffit (0 vulnérabilité, CI verte)
 - [ ] L'image est scannée et tourne en non-root (5d)
 
 ## Réutilisable : quoi copier, quoi changer
 
-- Les jobs `secrets` et `sast` de `ci.yml` : copiables tels quels
+- Les jobs `secrets`, `sast` et `audit` de `ci.yml` : copiables tels quels
 - `.semgrep.yml` : adapter les règles au langage/au projet
 - La hiérarchie « révoquer → réécrire → ne jamais compter sur le nettoyage » :
   universelle, à garder en tête pour toute fuite
