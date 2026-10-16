@@ -84,7 +84,7 @@ par chapitre, avec les concepts, les commandes et la partie réutilisable.**
 
 ### Étape 5 — DevSecOps (brique par brique)
 - [x] 5a. Détection de secrets (gitleaks) — ne jamais commiter un secret
-- [ ] 5b. SAST : analyse statique du code (semgrep)
+- [x] 5b. SAST : analyse statique du code (semgrep)
 - [ ] 5c. Dépendances : audit des CVE (npm audit, trivy)
 - [ ] 5d. Image : scan (trivy), utilisateur non-root, HEALTHCHECK
 - Concept clé : « shift-left » — détecter les problèmes tôt dans le pipeline
