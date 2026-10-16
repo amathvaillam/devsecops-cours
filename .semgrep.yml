@@ -1,0 +1,14 @@
+rules:
+  - id: no-eval
+    languages: [javascript]
+    message: "eval() execute du code arbitraire — injection de code possible."
+    severity: ERROR
+    pattern: eval(...)
+
+  - id: no-sql-concat
+    languages: [javascript]
+    message: "Requete SQL construite par concatenation — injection SQL possible. Utiliser les parametres ($1, $2)."
+    severity: ERROR
+    pattern-either:
+      - pattern: $POOL.query($SQL + $X, ...)
+      - pattern: $POOL.query($X + $SQL, ...)

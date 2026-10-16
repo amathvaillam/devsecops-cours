@@ -64,3 +64,10 @@ jobs:
       - name: Scanner l'historique du dépôt
         # Même outil, même commande qu'en local — l'image contient le binaire gitleaks
         run: docker run --rm -v "${{ github.workspace }}:/repo" ghcr.io/gitleaks/gitleaks:latest detect --source=/repo --no-banner
+  sast:
+    name: Analyse statique (semgrep)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scanner le code avec les regles du repo
+        run: docker run --rm -v "${{ github.workspace }}:/src" semgrep/semgrep:latest semgrep scan --config .semgrep.yml --metrics=off --error
