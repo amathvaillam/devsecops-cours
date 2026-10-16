@@ -83,7 +83,7 @@ par chapitre, avec les concepts, les commandes et la partie réutilisable.**
 - Concepts : CD, registre d'images, immutabilité des artefacts
 
 ### Étape 5 — DevSecOps (brique par brique)
-- [ ] 5a. Détection de secrets (gitleaks) — ne jamais commiter un secret
+- [x] 5a. Détection de secrets (gitleaks) — ne jamais commiter un secret
 - [ ] 5b. SAST : analyse statique du code (semgrep)
 - [ ] 5c. Dépendances : audit des CVE (npm audit, trivy)
 - [ ] 5d. Image : scan (trivy), utilisateur non-root, HEALTHCHECK
