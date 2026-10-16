@@ -71,3 +71,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Scanner le code avec les regles du repo
         run: docker run --rm -v "${{ github.workspace }}:/src" semgrep/semgrep:latest semgrep scan --config .semgrep.yml --metrics=off --error
+  audit:
+    name: Audit des dépendances (npm audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Auditer les dependances (CVE)
+        run: npm audit --audit-level=high
+        working-directory: app
