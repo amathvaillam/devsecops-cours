@@ -1,8 +1,7 @@
-
-// Fichier d'exercice — volontairement vulnerable (ne pas reproduire !)
-const id = "42";
-const code = eval("1 + 1");
+// Version corrigee : les motifs dangereux ont ete remplaces par leurs equivalents surs
+const id = Number("42");
 
 async function chercheProduit(pool, req) {
-  return pool.query("SELECT * FROM produits WHERE id = " + req.params.id);
+  // Requete parametree : la valeur voyage separement du SQL
+  return pool.query("SELECT * FROM produits WHERE id = $1", [req.params.id]);
 }
