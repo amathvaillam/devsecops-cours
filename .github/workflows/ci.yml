@@ -1,3 +1,18 @@
+# =============================================================================
+#  CI — GitHub Actions : LA PORTE D'ENTREE
+#
+#  S'execute sur chaque PULL REQUEST (le gate de revue) et sur main.
+#  Jobs en parallele, chacun avec UN role :
+#
+#    test    : tests Node + PostgreSQL jetable     (le coeur du gate)
+#    build   : verifie que le Dockerfile construit  (artefact constructible)
+#    secrets : gitleaks  -> aucun secret commite     (SAST secrets)
+#    sast    : semgrep   -> motifs vulnerables       (analyse statique)
+#    audit   : npm audit -> CVE des dependances      (SCA)
+#
+#  Placement (voir docs/pipeline-roles.md) : tout ce qui VERIFIE LE CODE vit
+#  ici. Jenkins s'occupe de la RELEASE (build/scan/push/deploy sur main).
+# =============================================================================
 name: CI
 
 on:
@@ -7,6 +22,11 @@ on:
     branches: [main]
 
 jobs:
+  # ===========================================================================
+  #  JOB 1 — TEST
+  #  Le gate principal : la suite de tests Node contre une vraie base
+  #  PostgreSQL (service container = notre "docker run" automate).
+  # ===========================================================================
   test:
     name: Tests (Node 20 + PostgreSQL)
     runs-on: ubuntu-latest
@@ -31,9 +51,10 @@ jobs:
           node-version: 20
           cache: npm
           cache-dependency-path: app/package-lock.json
-      - name: Initialiser le schéma de la base
+      # Le service demarre AVANT le checkout : le schema est applique ici (cf. ch.04)
+      - name: Initialiser le schema de la base
         run: sudo apt-get update && sudo apt-get install -y postgresql-client && PGPASSWORD=tppassword psql -h localhost -U tpuser -d tpdb -f db/init.sql
-      - name: Installer les dépendances
+      - name: Installer les dependances
         run: npm ci
         working-directory: app
       - name: Lancer les tests
@@ -46,6 +67,11 @@ jobs:
           DB_USER: tpuser
           DB_PASSWORD: tppassword
 
+  # ===========================================================================
+  #  JOB 2 — BUILD
+  #  Verifie que l'image se construit (Dockerfile valide). Pas de push ici :
+  #  Jenkins possede l'artefact de release.
+  # ===========================================================================
   build:
     name: Build de l'image Docker
     runs-on: ubuntu-latest
@@ -54,16 +80,28 @@ jobs:
       - name: Construire l'image
         run: docker build -t tp-crud:ci ./app
 
+  # ===========================================================================
+  #  JOB 3 — SECRETS (gitleaks)
+  #  Scanne TOUT l'historique git (fetch-depth: 0) : un secret commite est
+  #  compromis a jamais (cf. chapitre 06, brique 5a).
+  # ===========================================================================
   secrets:
-    name: Détection de secrets (gitleaks)
+    name: Detection de secrets (gitleaks)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # historique complet : gitleaks scanne TOUS les commits
-      - name: Scanner l'historique du dépôt
-        # Même outil, même commande qu'en local — l'image contient le binaire gitleaks
+      - name: Scanner l'historique du depot
+        # Meme image, meme commande qu'en local
         run: docker run --rm -v "${{ github.workspace }}:/repo" ghcr.io/gitleaks/gitleaks:latest detect --source=/repo --no-banner
+
+  # ===========================================================================
+  #  JOB 4 — SAST (semgrep)
+  #  Analyse STATIQUE : lit le code (sans l'executer) et cherche des motifs
+  #  vulnerables (eval, SQL concatene...). Regles maison : .semgrep.yml
+  #  --error : tout finding => CI rouge.
+  # ===========================================================================
   sast:
     name: Analyse statique (semgrep)
     runs-on: ubuntu-latest
@@ -71,8 +109,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Scanner le code avec les regles du repo
         run: docker run --rm -v "${{ github.workspace }}:/src" semgrep/semgrep:latest semgrep scan --config .semgrep.yml --metrics=off --error
+
+  # ===========================================================================
+  #  JOB 5 — AUDIT (npm audit)
+  #  SCA : compare les versions du lockfile aux CVE connues.
+  #  --audit-level=high : bloque sur HIGH/CRITICAL (moderate affiche seulement).
+  # ===========================================================================
   audit:
-    name: Audit des dépendances (npm audit)
+    name: Audit des dependances (npm audit)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
