@@ -62,6 +62,22 @@ pipeline {
                 }
             }
         }
+        stage('Deploy (approbation)') {
+            steps {
+                input message: "Deployer availlam/tp-crud:${BUILD_NUMBER} en production ?", ok: 'Deployer'
+
+                withEnv(["TAG=${BUILD_NUMBER}"]) {
+                    sh 'docker compose -p tpcrudprod -f compose.prod.yml pull'
+                    sh 'docker compose -p tpcrudprod -f compose.prod.yml up -d --remove-orphans'
+                }
+
+                // Schema au premier deploiement uniquement (idempotent)
+                sh 'docker exec tpcrudprod-db-1 psql -U tpuser -d tpdb -tAc "SELECT count(*) FROM produits" || docker exec -i tpcrudprod-db-1 psql -U tpuser -d tpdb < db/init.sql'
+
+                // Smoke test POST-deploiement
+                sh 'docker exec tpcrudprod-web-1 wget -qO- http://127.0.0.1:5000/health | grep -q ok'
+            }
+        }
     }
 
     post {
