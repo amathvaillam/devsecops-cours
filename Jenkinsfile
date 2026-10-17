@@ -137,17 +137,23 @@ pipeline {
                 echo '################ ETAPE 6/6 : DAST ZAP ################'
                 sh 'docker rm -f zap-scan || true'
 
-                // -I : ne pas echouer sur les WARN ; cible = l API deployee
-                sh 'docker run --name zap-scan -t ghcr.io/zaproxy/zap-stable zap-baseline.py -t http://host.docker.internal:5002/produits -r zap-baseline-report.html -I || true'
+                // -I : ne pas echouer sur les WARN ; cible = l API deployee.
+                // Image Docker Hub : ghcr.io refuse l acces anonyme depuis ce Jenkins.
+                // --user root + volume nomme : /zap/wrk doit etre monte ET inscriptible
+                // pour que zap-baseline.py puisse ecrire son rapport.
+                sh 'docker run --name zap-scan -t --user root -v zap-wrk:/zap/wrk zaproxy/zap-stable zap-baseline.py -t http://host.docker.internal:5002/produits -r zap-baseline-report.html -I || true'
 
-                // Recupere le rapport dans le workspace (docker cp : cf. TP 02)
-                sh 'docker cp zap-scan:/zap/wrk/zap-baseline-report.html . || true'
+                // Recupere le rapport dans le workspace (docker cp : cf. TP 02).
+                // Pas de "|| true" ici : sans rapport, le stage doit echouer —
+                // sinon un scan qui n a jamais tourne passe pour un succes.
+                sh 'docker cp zap-scan:/zap/wrk/zap-baseline-report.html .'
                 sh 'docker rm -f zap-scan || true'
+                sh 'docker volume rm zap-wrk || true'
             }
             post {
                 always {
                     // Rapport telechargeable depuis la page du build
-                    archiveArtifacts artifacts: 'zap-baseline-report.html', allowEmptyArchive: true
+                    archiveArtifacts artifacts: 'zap-baseline-report.html', allowEmptyArchive: false
                 }
             }
         }

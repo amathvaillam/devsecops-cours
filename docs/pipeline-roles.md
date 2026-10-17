@@ -49,7 +49,7 @@ deux côtés). Acceptable pour apprendre — on resserrera à mesure que les
 chapitres ajoutent leurs briques :
 
 - Chapitre 06 : les scans de code rejoignent **GH Actions/PR** ; le scan
-  d'image et le scan nocturne rejoignent **Jenkins**.
+  d'image, le DAST et le scan nocturne rejoignent **Jenkins**.
 - Chapitre 07 : le déploiement vit dans **Jenkins** (jamais dans le cloud).
 
 ## Placement prévu des briques de sécurité (chap. 06)
@@ -59,6 +59,8 @@ chapitres ajoutent leurs briques :
 - **npm audit** (CVE des dépendances) → GH Actions, sur PR
 - **trivy image** (CVE de l'image construite) → Jenkins, **avant le push**
   (on scanne l'artefact exact qu'on publie)
+- **zap baseline** (DAST, scan de l'app déployée) → Jenkins, **après le
+  déploiement** (il faut une cible vivante, inaccessible depuis le cloud)
 - **scan complet nocturne** (cron) → Jenkins (job planifié — le cloud n'a pas
   à porter ça)
 

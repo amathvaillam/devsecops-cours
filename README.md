@@ -87,6 +87,7 @@ par chapitre, avec les concepts, les commandes et la partie réutilisable.**
 - [x] 5b. SAST : analyse statique du code (semgrep)
 - [x] 5c. Dépendances : audit des CVE (npm audit, trivy)
 - [x] 5d. Image : scan (trivy), utilisateur non-root, HEALTHCHECK
+- [x] 5e. DAST : scan dynamique (OWASP ZAP baseline) après déploiement
 - Concept clé : « shift-left » — détecter les problèmes tôt dans le pipeline
 
 ### Étape 6 — Déploiement réel
