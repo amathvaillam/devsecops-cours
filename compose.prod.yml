@@ -1,0 +1,35 @@
+# Stack de "production" : tire l'image versionnee depuis DockerHub.
+# Pas de build ici — on deploie un artefact immuable, pas des sources.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tpuser
+      POSTGRES_PASSWORD: tppassword
+      POSTGRES_DB: tpdb
+    volumes:
+      - tp_prod_db:/var/lib/postgresql/data   # les donnees survivent aux deploiements
+    networks:
+      - tp_prod_net
+    restart: unless-stopped
+
+  web:
+    image: availlam/tp-crud:${TAG:?TAG requis}
+    environment:
+      DB_HOST: db
+      DB_NAME: tpdb
+      DB_USER: tpuser
+      DB_PASSWORD: tppassword
+    ports:
+      - "5002:5000"
+    depends_on:
+      - db
+    networks:
+      - tp_prod_net
+    restart: unless-stopped
+
+volumes:
+  tp_prod_db:
+
+networks:
+  tp_prod_net:
