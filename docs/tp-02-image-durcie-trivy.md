@@ -72,6 +72,52 @@ docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:lates
 - `exit 0` → propre pour la politique HIGH/CRITICAL → feu vert
 - `exit 1` → findings → analyser avant de pousser
 
+### Les dry-runs par sévérité — choisir sa politique
+
+Trivy connaît 5 niveaux : `UNKNOWN`, `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`.
+`--severity` choisit ce qui est **affiché/compté** ; `--exit-code` choisit ce
+qui **bloque**. Deux usages distincts :
+
+**1. Auditer — voir tout, ne rien bloquer** (`--exit-code 0`) :
+
+```powershell
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache/trivy aquasec/trivy:latest image --severity UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL --exit-code 0 --no-progress tp-crud:test
+```
+
+Rapport complet — idéal pour découvrir un projet ou faire une revue périodique.
+
+**2. Gater — bloquer selon la politique** (`--exit-code 1`) :
+
+```powershell
+# Politique stricte (équipes matures, secteurs sensibles) : bloque dès MEDIUM
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache/trivy aquasec/trivy:latest image --severity MEDIUM,HIGH,CRITICAL --exit-code 1 --no-progress tp-crud:test
+
+# Politique par défaut de ce TP : bloque sur HIGH et CRITICAL
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache/trivy aquasec/trivy:latest image --severity HIGH,CRITICAL --exit-code 1 --no-progress tp-crud:test
+
+# Mode dette assumée / urgence : ne bloque que sur CRITICAL
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache/trivy aquasec/trivy:latest image --severity CRITICAL --exit-code 1 --no-progress tp-crud:test
+
+# HIGH/CRITICAL, mais seulement si un correctif existe (--ignore-unfixed)
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache/trivy aquasec/trivy:latest image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 --no-progress tp-crud:test
+
+# Politique par défaut + exclusion de l'outillage npm (cas vécu du TP 02)
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache:/root/.cache/trivy aquasec/trivy:latest image --severity HIGH,CRITICAL --skip-dirs usr/local/lib/node_modules/npm --exit-code 1 --no-progress tp-crud:test
+```
+
+| Politique | Seuil qui bloque | Contexte typique |
+|---|---|---|
+| Critique seule | CRITICAL | dette assumée / période d'urgence |
+| **High (défaut TP)** | HIGH + CRITICAL | la plupart des projets |
+| Medium | MEDIUM + HIGH + CRITICAL | équipes matures / secteur sensible |
+| + `--ignore-unfixed` | ≥ HIGH **avec correctif** | réduire le bruit des CVE sans fix |
+| + `--skip-dirs` | ≥ HIGH **hors outillage** | outillage absent du runtime |
+
+> Règle : **auditer d'abord** (`--exit-code 0`, toutes les sévérités), puis
+> choisir son seuil, puis l'écrire dans le gate (Jenkinsfile) **avec sa
+> justification**. Attention : une même CVE peut changer de sévérité selon le
+> fournisseur (trivy le signale par un WARN) — le seuil se révise dans le temps.
+
 Optimisation (cache de la base de vulnérabilités entre les runs) :
 
 ```powershell
