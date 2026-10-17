@@ -1,7 +1,7 @@
 # Chapitre 06 — DevSecOps ✅
 
 > ✅ **Chapitre terminé** — 5a (gitleaks) · 5b (semgrep) · 5c (npm audit) ·
-> 5d (trivy + durcissement).
+> 5d (trivy + durcissement) · 5e (DAST ZAP, scan vérifié).
 
 Objectif : ajouter la sécurité au pipeline existant, en la déplaçant **le plus
 tôt possible** dans la chaîne — c'est le « shift-left ». Placement de chaque
@@ -157,6 +157,63 @@ Recette complète : [TP 02](tp-02-image-durcie-trivy.md).
 
 ---
 
+## 5e. Scan dynamique (DAST) — OWASP ZAP baseline ✅
+
+**Ce qui a été construit** : un stage `6. DAST (ZAP baseline)` dans le
+Jenkinsfile, **après le déploiement** (un scan dynamique a besoin d'une cible
+vivante) :
+
+- image `zaproxy/zap-stable` (Docker Hub) ;
+- `--user root -v zap-wrk:/zap/wrk` : le script exige un volume monté sur
+  `/zap/wrk`, et l'image tourne en utilisateur `zap` (d'où root pour écrire) ;
+- cible `http://host.docker.internal:5002/produits` : le port publié par
+  `compose.prod.yml`, vu depuis le conteneur de scan ;
+- `-I` : les WARN ne font pas échouer le scan ; **mode rapport** (`|| true`)
+  tant que la politique n'est pas calibrée ;
+- `docker cp` récupère le rapport dans le workspace, `archiveArtifacts` le
+  publie sur la page du build. **Pas de `|| true` sur le `docker cp`** :
+  sans rapport, le stage échoue — sinon un scan qui n'a jamais tourné passe
+  pour un succès (c'est exactement ce qui s'est produit au build 25).
+
+**Ce que le premier scan a trouvé** : 5 URLs, **0 FAIL, 6 WARN, 61 PASS**.
+Les 6 WARN sont des durcissements d'en-têtes HTTP, pas des vulnérabilités
+exploitables :
+
+- `X-Content-Type-Options` absent ;
+- `X-Powered-By` (fuite de technologie) ;
+- contenu stockable/cacheable ;
+- CSP : directive sans fallback ;
+- `Permissions-Policy` absent ;
+- `Cross-Origin-Resource-Policy` absent ou invalide.
+
+**Pièges vécus** :
+
+- `ghcr.io/zaproxy/zap-stable` → **`denied`** en anonyme depuis ce Jenkins :
+  on bascule sur l'image Docker Hub `zaproxy/zap-stable` ;
+- sans volume sur `/zap/wrk`, `zap-baseline.py` refuse de démarrer
+  (`directory '/zap/wrk' is not mounted`) ;
+- volume monté en root + image non-root → `Permission denied` sur
+  `zap.yaml` : `--user root` pour ce conteneur de scan éphémère ;
+- Jenkins tourne lui-même dans un conteneur (Docker-outside-of-Docker) :
+  un bind mount de `$(pwd)` ne marcherait pas (le démon Docker ne voit pas
+  le workspace Jenkins). Un **volume nommé** + `docker cp` fonctionne, car
+  `docker cp` passe par l'API Docker ;
+- `|| true` sur le scan (mode rapport) **mais pas** sur la récupération du
+  rapport : un outil qui n'a pas tourné ne doit pas être vert.
+
+**Vérification** :
+
+- [x] Scan exécuté : 0 FAIL / 6 WARN / 61 PASS, rapport HTML de 52 Ko
+- [x] `host.docker.internal` et `docker cp` validés depuis le conteneur Jenkins
+- [ ] Build Jenkins complet avec rapport archivé (après merge du correctif)
+
+**Réutilisable** : la recette « ZAP baseline dans un Jenkins conteneurisé » —
+image Docker Hub, volume nommé pour `/zap/wrk`, `--user root`, cible
+`host.docker.internal:<port publié>`, `docker cp` + `archiveArtifacts`, et un
+échec franc si le rapport manque.
+
+---
+
 ## Le concept clé
 
 « Shift-left » : plus un problème est détecté tôt (écriture du code → commit →
@@ -176,6 +233,8 @@ différent du pipeline.
 - [x] Gate trivy entre Test et Push : a bloqué 27 puis 4 findings (skip → pas de push)
 - [x] Calibration documentée (`--skip-dirs` outillage npm) + base `node:24-alpine`
 - [x] Push DockerHub derrière un gate vert (tag 21)
+- [x] Scan ZAP baseline : 0 FAIL / 6 WARN / 61 PASS, rapport HTML généré
+- [ ] Build Jenkins avec rapport ZAP archivé (après merge du correctif)
 
 ## Réutilisable : quoi copier, quoi changer
 
@@ -183,5 +242,7 @@ différent du pipeline.
 - `.semgrep.yml` : adapter les règles au langage/au projet
 - Le Dockerfile durci + le stage trivy : voir la recette
   [TP 02](tp-02-image-durcie-trivy.md) (politiques de sévérité incluses)
+- Le stage DAST ZAP du Jenkinsfile : recette détaillée dans la section 5e
+  (image Docker Hub, volume `/zap/wrk`, `docker cp`, rapport obligatoire)
 - La hiérarchie « révoquer → réécrire → ne jamais compter sur le nettoyage » :
   universelle, à garder en tête pour toute fuite
