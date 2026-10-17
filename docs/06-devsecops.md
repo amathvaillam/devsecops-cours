@@ -1,7 +1,7 @@
-# Chapitre 06 — DevSecOps
+# Chapitre 06 — DevSecOps ✅
 
-> 🔄 En cours — briques **5a (gitleaks)**, **5b (semgrep)** et **5c (npm
-> audit)** terminées. Brique 5d à venir.
+> ✅ **Chapitre terminé** — 5a (gitleaks) · 5b (semgrep) · 5c (npm audit) ·
+> 5d (trivy + durcissement).
 
 Objectif : ajouter la sécurité au pipeline existant, en la déplaçant **le plus
 tôt possible** dans la chaîne — c'est le « shift-left ». Placement de chaque
@@ -33,14 +33,12 @@ brique : voir [Rôles des pipelines](pipeline-roles.md).
    puis `git push --force-with-lease` (le « force » propre : il refuse si
    quelqu'un a poussé entre-temps — jamais `--force` nu)
 4. PR **fermée sans merge** — on ne merge jamais une branche qui a contenu un
-   secret, même faux (le commit resterait dans l'historique de main pour
-   toujours → gitleaks hurlerait sur chaque PR future).
+   secret, même faux.
 
 **La hiérarchie à retenir (incident réel)** :
 
 1. **RÉVOQUER** le secret chez le fournisseur — toujours en premier, sans
-   exception. Le nettoyage ne « dé-expose » rien : le secret a pu être cloné,
-   forké, scrapé (des robots lisent GitHub en temps réel).
+   exception. Le nettoyage ne « dé-expose » rien.
 2. Réécrire l'historique ensuite — de l'hygiène, pas une guérison.
 3. Même après réécriture, les vieux commits traînent : reflog local (~90
    jours), objets orphelins et réf. de PR côté GitHub. Seule la révocation
@@ -48,12 +46,11 @@ brique : voir [Rôles des pipelines](pipeline-roles.md).
 
 **Pièges vécus** :
 
-- Le log CI ne montre que le résumé (`leaks found: 1`) — le détail (règle,
-  fichier, commit) s'obtient en local avec `--verbose`
+- Le log CI ne montre que le résumé (`leaks found: 1`) — le détail s'obtient
+  en local avec `--verbose`
 - `fetch-depth: 0` obligatoire, sinon le scan est aveugle à l'historique
 - Notre job scanne l'historique **complet** : plus strict que les setups qui
-  ne scannent que les nouveaux commits d'une PR (chez eux, un `rm`-commit
-  « passerait » en cachant la fuite sous le tapis)
+  ne scannent que les nouveaux commits d'une PR
 
 ---
 
@@ -61,44 +58,28 @@ brique : voir [Rôles des pipelines](pipeline-roles.md).
 
 **Ce qui a été construit** :
 
-- `.semgrep.yml` **dans le repo** — nos deux règles maison, versionnées avec
-  le code, comme le Jenkinsfile :
-  - `no-eval` : `pattern: eval(...)` — tout appel à eval, quels qu'arguments
-  - `no-sql-concat` : `$POOL.query($SQL + $X, ...)` — concaténation dans une
-    requête (dans les deux ordres `$SQL + $X` et `$X + $SQL`)
+- `.semgrep.yml` **dans le repo** — deux règles maison, versionnées :
+  - `no-eval` : `pattern: eval(...)`
+  - `no-sql-concat` : `$POOL.query($SQL + $X, ...)` (les deux ordres)
 - Job `sast` dans `.github/workflows/ci.yml` (GH Actions, sur PR) :
   `semgrep scan --config .semgrep.yml --metrics=off --error`
-- `--error` : tout finding = code de sortie ≠ 0 = CI rouge
 
-**Pourquoi des règles maison ?** Les packs publics (p/javascript, p/nodejs…)
-existent, mais leurs règles fines (taint analysis) ne matchaient pas nos
-échantillons minimaux. Écrire nos règles enseigne la mécanique : **une règle
-SAST = un motif sur l'arbre syntaxique du code**. Les `$X` sont des
-variables-motifs, `...` un joker. Notre requête paramétrée sûre
-(`"… $1", [req.params.id]`) **ne matche pas** le motif de concaténation — le
-fix est prescrit par la règle elle-même.
+**Pourquoi des règles maison ?** Les packs publics existent, mais leurs règles
+fines (taint analysis) ne matchaient pas nos échantillons minimaux. Écrire nos
+règles enseigne la mécanique : **une règle SAST = un motif sur l'arbre
+syntaxique**. Notre requête paramétrée sûre (`"… $1", [...]`) **ne matche
+pas** le motif de concaténation — le fix est prescrit par la règle.
 
 **L'exercice du code vulnérable (vécu)** :
 
-1. Un fichier avec `eval(...)` + `pool.query("SELECT … " + req.params.id)`
-   → PR → **`2 Code Findings, 2 blocking`**
-2. **Le run rouge était chirurgical** : sur les 4 jobs, SEUL semgrep a
-   échoué (tests ✓, build ✓, gitleaks ✓) — chaque scanner voit une chose que
-   les autres ne voient pas. C'est pour ça qu'on les empile.
-3. **Le fix par commit a suffi** : réécriture du fichier en version sûre
-   (`Number()` au lieu d'`eval`, requête paramétrée avec `$1`) → CI verte.
-
-> ⚡ **Le contraste du chapitre** : semgrep scanne **l'état actuel** du code
-> (pas l'historique) → un fix par commit suffit. Gitleaks (5a) relit tout le
-> passé → il fallait **réécrire l'historique**. Deux scanners, deux
-> philosophies — tu as vécu les deux.
-
-**Notes** :
-
-- Le message de la règle guide le fix (« Utiliser les parametres ($1, $2) »)
-  — un bon finding est pédagogique
-- L'image semgrep est volumineuse (~2 Go) → premier run CI plus long
-- `--config auto` exige les metrics activés (incompatible avec `--metrics=off`)
+1. `eval(...)` + `pool.query("SELECT … " + req.params.id)` → PR →
+   **`2 Code Findings, 2 blocking`**
+2. **Run rouge chirurgical** : SEUL semgrep a échoué (tests ✓, build ✓,
+   gitleaks ✓) — chaque scanner voit un angle différent.
+3. **Fix par commit** : version sûre (`Number()`, requête paramétrée `$1`)
+   → vert.
+   > ⚡ Contraste : semgrep scanne **l'état actuel** du code → un fix par
+   > commit suffit. Gitleaks relit le passé → il faut réécrire l'historique.
 
 ---
 
@@ -106,40 +87,73 @@ fix est prescrit par la règle elle-même.
 
 **Ce qui a été construit** : job `audit` dans `.github/workflows/ci.yml`
 (GH Actions, sur PR) : `npm audit --audit-level=high` (lit le lockfile).
-Politique : le job échoue sur les CVE **high/critical** — les moderate
-s'affichent sans bloquer.
+Politique : échoue sur HIGH/CRITICAL.
 
 **L'exercice de la dépendance vérolée (vécu)** :
 
-1. `npm install lodash@4.17.15` — une des libs les plus populaires du monde,
-   en version un peu ancienne → **3 vulnérabilités** visibles dès le local
-   (prototype pollution, injection de commande, ReDoS). npm audit documente
-   chaque CVE : identifiant, sévérité, chemin.
-2. Commit + PR → audit **✗ rouge** — et les 4 autres jobs verts : le *code*
-   va bien, c'est la *lib* qui est malade (encore un angle différent !).
-3. **Le fix par upgrade** : lodash mis à jour vers la version patchée
-   (`^4.18.1`, la dernière) → `found 0 vulnerabilities` → audit **✓ vert**.
+1. `npm install lodash@4.17.15` → **3 vulnérabilités** visibles dès le local
+   (prototype pollution, injection de commande, ReDoS).
+2. PR → audit **✗ rouge**, les 4 autres jobs verts : le *code* va bien, c'est
+   la *lib* qui est malade.
+3. **Fix par upgrade** (`^4.18.1`, la dernière) → `found 0 vulnerabilities`
+   → vert.
 
-**Le menu de remédiation (à retenir)** :
-
-- **Upgrader** (le fix standard, presque toujours gagnant)
-- Remplacer la lib par une alternative
-- Retirer (si inutilisée)
-- Ou **accepter en connaissance de cause** — avec une évaluation du risque
-  documentée (parfois une CVE n'est pas exploitable dans ton contexte)
+**Le menu de remédiation** : upgrader (le standard) · remplacer · retirer
+(si inutilisée) · accepter en connaissance de cause (risque documenté).
 
 **La leçon** : la popularité ne protège pas — **la fraîcheur des versions,
-si**. On met à jour régulièrement, même « quand tout marche ».
+si**.
 
 **Incident vécu** : panne DNS transitoire (`Could not resolve host:
-github.com`) pendant un push → simple retry après retour du réseau. Le
-réflexe d'ops : **identifier la couche qui casse** (réseau ? DNS ? auth ?
-proxy ?) avant de suspecter git.
+github.com`) → simple retry. Réflexe d'ops : identifier la couche qui casse
+(réseau ? DNS ? auth ? proxy ?) avant de suspecter git.
 
-## 5d. Image — trivy + durcissement (à venir)
+---
 
-Objectif : scanner l'image construite (Jenkins, avant le push), utilisateur
-non-root, HEALTHCHECK.
+## 5d. Image : trivy + durcissement ✅
+
+**Ce qui a été construit** :
+
+- **Dockerfile durci** : utilisateur non-root (`app`) + `HEALTHCHECK` sur
+  `/health` (interval 30 s, wget BusyBox)
+- **Stage `Scan image (trivy)`** entre Test et Push dans le Jenkinsfile :
+  `trivy image --severity HIGH,CRITICAL --exit-code 1 --skip-dirs usr/local/lib/node_modules/npm`
+- Si le scan échoue → `Push DockerHub` est **sauté** : l'image vulnérable ne
+  sort jamais du pipeline
+
+**L'exercice (vécu, en deux temps)** :
+
+1. Premier scan sur `node:20-alpine` : **27 findings** — OS 4 HIGH (OpenSSL) +
+   outillage npm 22 HIGH + 1 CRITICAL → `Push… skipped` = **le gate a bloqué
+   la publication** (comportement voulu !).
+2. Diagnostic : les 23 findings Node étaient dans
+   `usr/local/lib/node_modules/npm/**` — l'**outillage bundlé de l'image de
+   base**, PAS les dépendances applicatives (npm audit = 0).
+3. **Upgrade de la base** : `node:20-alpine` → **`node:24-alpine`** →
+   de 27 à **4 HIGH** (l'OS et le CRITICAL disparus).
+4. **Calibration documentée** : les 4 restants = outillage npm non utilisé au
+   runtime → `--skip-dirs usr/local/lib/node_modules/npm`, avec commentaire
+   justificatif dans le Jenkinsfile (OS + deps applicatives restent scannés
+   strictement).
+5. Build final : `Build → Test → Scan ✅ → Push DockerHub` — **première image
+   publiée derrière un gate vert** (tag 21).
+
+**Pièges vécus** :
+
+- `npm ci` dans l'image non-root → **EACCES** → `--user root` pour le
+  conteneur de **test** uniquement (l'image livrée reste non-root)
+- trivy re-télécharge sa base à chaque `docker run --rm` → volume cache en
+  local ; en CI le premier scan est plus long
+- **ECONNREFUSED** transitoire vers registry.npmjs.org pendant `npm ci` →
+  retry par **redelivery du webhook** : les pannes réseau arrivent, le
+  pipeline doit être rejouable
+- 🔑 une même CVE peut changer de sévérité selon le fournisseur (trivy le
+  signale) — la politique de gate se **date et se révise**
+
+**La leçon** : un gate strict n'est pas un gate qu'on laisse bloquer pour
+toujours — on **calibre avec justification** : audit d'abord (toutes
+sévérités), puis seuil choisi, puis exception documentée et révisable.
+Recette complète : [TP 02](tp-02-image-durcie-trivy.md).
 
 ---
 
@@ -158,11 +172,16 @@ différent du pipeline.
 - [x] Run rouge chirurgical (seul semgrep échoue) puis vert après fix par commit
 - [x] Une dépendance vulnérable factice est détectée par l'audit (lodash 4.17.15 → 3 CVE)
 - [x] Le fix par upgrade suffit (0 vulnérabilité, CI verte)
-- [ ] L'image est scannée et tourne en non-root (5d)
+- [x] Image non-root (`whoami` → `app`) + HEALTHCHECK (`(healthy)`)
+- [x] Gate trivy entre Test et Push : a bloqué 27 puis 4 findings (skip → pas de push)
+- [x] Calibration documentée (`--skip-dirs` outillage npm) + base `node:24-alpine`
+- [x] Push DockerHub derrière un gate vert (tag 21)
 
 ## Réutilisable : quoi copier, quoi changer
 
 - Les jobs `secrets`, `sast` et `audit` de `ci.yml` : copiables tels quels
 - `.semgrep.yml` : adapter les règles au langage/au projet
+- Le Dockerfile durci + le stage trivy : voir la recette
+  [TP 02](tp-02-image-durcie-trivy.md) (politiques de sévérité incluses)
 - La hiérarchie « révoquer → réécrire → ne jamais compter sur le nettoyage » :
   universelle, à garder en tête pour toute fuite
