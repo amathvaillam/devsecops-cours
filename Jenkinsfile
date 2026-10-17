@@ -37,7 +37,7 @@ pipeline {
                 sh 'docker exec tp-test-db psql -U tpuser -d tpdb -f /tmp/init.sql'
 
                 // 4. La vraie suite de tests, contre cette base
-                sh 'docker run --rm --network tp-ci-net -e DB_HOST=tp-test-db -e DB_PORT=5432 -e DB_NAME=tpdb -e DB_USER=tpuser -e DB_PASSWORD=tppassword ${DOCKER_IMAGE}:${BUILD_NUMBER} sh -c "npm ci && npm test"'
+               sh 'docker run --rm --user root --network tp-ci-net -e DB_HOST=tp-test-db -e DB_PORT=5432 -e DB_NAME=tpdb -e DB_USER=tpuser -e DB_PASSWORD=tppassword ${DOCKER_IMAGE}:${BUILD_NUMBER} sh -c "npm ci && npm test"'
             }
         }
         stage('Scan image (trivy)') {
