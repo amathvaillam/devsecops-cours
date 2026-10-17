@@ -40,7 +40,11 @@ pipeline {
                 sh 'docker run --rm --network tp-ci-net -e DB_HOST=tp-test-db -e DB_PORT=5432 -e DB_NAME=tpdb -e DB_USER=tpuser -e DB_PASSWORD=tppassword ${DOCKER_IMAGE}:${BUILD_NUMBER} sh -c "npm ci && npm test"'
             }
         }
-
+        stage('Scan image (trivy)') {
+            steps {
+               sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity HIGH,CRITICAL --exit-code 1 --no-progress ${DOCKER_IMAGE}:${BUILD_NUMBER}'
+            }
+        }
         stage('Push DockerHub') {
             steps {
                 withCredentials([usernamePassword(
