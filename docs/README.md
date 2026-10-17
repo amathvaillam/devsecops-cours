@@ -34,3 +34,5 @@ terminé que lorsque la vérification est passée.
 
 - [TP 01 — Les remotes de A à Z (avec livraison finale)](tp-01-remotes.md) —
   fetch/pull, tracking, prune, rouge→vert, puis livraison d'un endpoint complet
+- [TP 02 — Image durcie + gate trivy (recette réutilisable)](tp-02-image-durcie-trivy.md) —
+  Dockerfile non-root/HEALTHCHECK, scan d'image bloquant, local-first, calibration du gate
