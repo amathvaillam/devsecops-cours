@@ -32,7 +32,7 @@ app.post("/produits", async (req, res) => {
 
 // PUT /produits/:id — modifie un produit
 app.put("/produits/:id", async (req, res) => {
-  const { nom, prix, quantite = 0 } = req.body;
+  const { nom, prix, quantite = 0 } = req.body ;
   const { rowCount } = await pool.query(
     "UPDATE produits SET nom = $1, prix = $2, quantite = $3 WHERE id = $4;",
     [nom, prix, quantite, req.params.id]
